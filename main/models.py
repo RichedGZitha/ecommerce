@@ -51,26 +51,19 @@ class Coupon(models.Model):
 
     # max value: 9.99, 2 digits for decimal point and 1 for other.
     amount = models.DecimalField(max_digits = 3, decimal_places = 2)
-    Code = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    Code = models.UUIDField(default=uuid.uuid4, unique=True)
     isValid = models.BooleanField(default = True)
     createdDate = models.DateTimeField(auto_now_add = True)
     expiredDate = models.DateTimeField()
-    admin = models.OneToOneField(to = CustomUser, on_delete = models.SET_NULL, null = True)
-
-
-    def clean(self) -> None:
-        
-        self.expiredDate = get_future_date(30)
-        
-        return super().clean()
+    admin = models.ForeignKey(to = CustomUser, on_delete = models.SET_NULL, null = True)
 
     def __str__(self):
 
-        if(self.expiredDate >= datetime.now()):
+        if(self.expiredDate.timestamp() <= datetime.now().timestamp()):
             self.isValid = False
             self.save()
 
-        return self.admin.name + "  --- amount: " + str(self.amount)
+        return self.admin.username + "  --- amount: " + str(self.amount)
 
 
 

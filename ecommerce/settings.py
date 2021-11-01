@@ -14,6 +14,7 @@ from pathlib import Path
 import os
 from datetime import timedelta
 import cloudinary
+import dj_database_url
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -23,7 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-f1-p+d@32de#bdi%==n$ma$!qll4%^wbnwl89x0=x^po#1akgh'
+SECRET_KEY = os.environ.get('EC_SECRET_KEY', 'django-insecure-f1-p+d@32de#bdi%==n$ma$!qll4%^wbnwl89x0=x^po#1akgh')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DJANGO_DEBUG') != 'False'
@@ -189,14 +190,14 @@ WSGI_APPLICATION = 'ecommerce.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
-EC_DB_USER =  'postgres' #os.environ.get('EC_DB_USER')
-EC_DB_PASSWORD = 'root' #os.environ.get('EC_DB_PASSWORD')
-
+EC_DB_USER =  os.environ.get('EC_DB_USER')
+EC_DB_PASSWORD = os.environ.get('EC_DB_PASSWORD')
+EC_DB_NAME = os.environ.get('EC_DB_NAME')
 
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'ecommercev1',
+        'NAME': EC_DB_NAME,
         'USER': EC_DB_USER,
         'PASSWORD': EC_DB_PASSWORD,
         'HOST': 'localhost',
@@ -205,6 +206,8 @@ DATABASES = {
 }
 
 # set dj here
+db_from_env = dj_database_url.config(conn_max_age=600)
+DATABASES['default'].update(db_from_env)
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
