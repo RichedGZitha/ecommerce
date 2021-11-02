@@ -17,9 +17,9 @@
 - Implement weight, age restriction, brand name and capacity for the Product model.
 - Implement Shipping based on weight, capacity, price range and/or location of the customer.
 - Support for Merchants so that merchants can ask Managers to add categories and get general help. This functions as support. 
-- The support will display messages from Merchants in a location only access by managers and if lucky randomly assign task to managers.
+- The support will display messages from Merchants in a location only access by managers and randomly assign tasks to managers.
 - Reporting for customers includes generating pdf of past purchases, shipments and orders.
-- Reporting for admin includes get number of daily signups, and other data analytics data for business intelligence.
+- Reporting for admin includes get number of daily signups, generating documents and other data analytics information for business intelligence.
 - Merchants management system (ban, suspend, unsuspend and unban Merchants) for violating usage policy.
 - Add or remove Merchants and Managers.
 - Add a refferral system using links.
@@ -33,3 +33,6 @@
 - To install all packages run `` python -m pip install -r requirements.txt ``.
 - To run the server use `` python manage.py runserver ``
 
+### Avaliable endpoints schema
+- Create user and login or simply create a superuser.
+- Go to `` \docs\api\ `` to view all available endpoints.
