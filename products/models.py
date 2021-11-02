@@ -28,7 +28,7 @@ class Product(models.Model):
     isActive = models.BooleanField(default=False)
     Description = models.TextField()
     Categories = models.ManyToManyField(to=Category, related_name='productCategories', blank=True)
-    manager = models.ForeignKey(to = CustomUser, on_delete=models.SET_NULL, null=True)
+    managerOrMerchant = models.ForeignKey(to = CustomUser, on_delete=models.SET_NULL, null=True)
     FrontImage = CloudinaryField('images')
     RearImage = CloudinaryField('images')
 
