@@ -2,25 +2,28 @@ from rest_framework.response import Response
 from rest_framework import permissions
 from rest_framework import status, generics
 from django.db.models import Q
+from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema 
 from rest_framework.decorators import api_view, permission_classes, renderer_classes
 from rest_framework.renderers import BrowsableAPIRenderer, JSONRenderer
-from main import serializers
 
 from products.models import Category, Product, ProductReview
 from products.serializers import CategorySerializer, ProductDisplaySerializer, ProductManagerSerializer, ProductReviewSerializer
-
+from . import utils
 
 # TODO Check if person is manager or merchant.
 # TODO Use single to: Call async to send email to those responsible for the product of this change. Async!!
 # create product
+
 class CreateProduct(generics.CreateAPIView):
     serializer_class = ProductManagerSerializer
-    permission_classes = [permissions.IsAdminUser, permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, utils.IsManager, utils.IsMerchant]
     renderer_classes = [JSONRenderer, BrowsableAPIRenderer]
 
 
 # create  product review
 # TODO: Call async to send email to those responsible for the product that a new review was created. Async!!
+
 class CreateProductReview(generics.CreateAPIView):
     serializer_class = ProductReviewSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -28,74 +31,92 @@ class CreateProductReview(generics.CreateAPIView):
 
 
 # get and edit product
-@api_view(['PUT', 'PATCH', 'GET'])
+@swagger_auto_schema(methods=['put', 'patch'], 
+    request_body=openapi.Schema(
+    type=openapi.TYPE_OBJECT, # object because the data is in json format
+    properties={
+        'Name':openapi.Schema(type=openapi.TYPE_STRING, description = 'Name of the product.'),
+        'Quantity':openapi.Schema(type=openapi.TYPE_NUMBER, description = 'Quantity of products left.'),
+        'Price':openapi.Schema(type=openapi.TYPE_NUMBER, description = 'Price of the product.'),
+        'isSpecial':openapi.Schema(type=openapi.TYPE_BOOLEAN, description = 'Indicates whether the product is on special.'),
+        'isActive':openapi.Schema(type=openapi.TYPE_BOOLEAN, description = 'Indicates whether the product is active.'),
+        'Description':openapi.Schema(type=openapi.TYPE_STRING, description = 'Description of the product.')
+    },
+
+    required = []
+    
+), operation_id="editproductreview_view_id")
+@api_view(['PUT', 'PATCH'])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
-@permission_classes([permissions.IsAuthenticated,])
-def editOrGetProductsManager(request, pk = None):
+@permission_classes([permissions.IsAuthenticated, utils.IsManager, utils.IsMerchant])
+def editProductsManager(request, pk = None):
 
     # check if user is manager or merchant.
     user = request.user
-    if user.groups.filter(Q(name = 'Merchant') | Q(name = 'Manager')).exists() == False:
-        return Response({'error':'Not allowed'}, status=status.HTTP_401_UNAUTHORIZED)
+    data = request.data
+    
+    if not data:
+        return Response({'error':'Could not update the product.'}, status=status.HTTP_400_BAD_REQUEST)
 
-    if request.method == 'GET':
+    try:
+        product = None
 
-        try:
-            product = None
+        # if manager.
+        if user.groups.filter(name = 'Manager').exist():
+            product = Product.objects.get(pk = pk)
+        elif user.groups.filter(name = 'Merchant').exist():
+            # To prevent subbotaging the competitor's products.
+            product = Product.objects.get(pk = pk, managerOrMerchant = user)
 
-            # if manager.
-            if user.groups.filter(name = 'Manager').exist():
-                product = Product.objects.get(pk = pk)
-            elif user.groups.filter(name = 'Merchant').exist():
-                # To prevent subbotaging the competitor's products.
-                product = Product.objects.get(pk = pk, managerOrMerchant = user)
-            
-            # if product was found.
-            if product:
-                productSerializer = ProductManagerSerializer(instance=product)
-                return Response(productSerializer.data, status =status.HTTP_200_OK)
-            else:
-                return Response({'error':'Not allowed to view this product.'}, status=status.HTTP_401_UNAUTHORIZED)
-
-        except Product.DoesNotExist:
-            return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
-
-    else:
-
-        data = request.data
-        if not data:
-            return Response({'error':'Could not update the product.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        try:
-            product = None
-
-            # if manager.
-            if user.groups.filter(name = 'Manager').exist():
-                product = Product.objects.get(pk = pk)
-            elif user.groups.filter(name = 'Merchant').exist():
-                # To prevent subbotaging the competitor's products.
-                product = Product.objects.get(pk = pk, managerOrMerchant = user)
-
-            # if product was found.
-            if product:
-                productSerializer = ProductManagerSerializer(data=data, partial = True, instance=product)
+        # if product was found.
+        if product:
+            productSerializer = ProductManagerSerializer(data=data, partial = True, instance=product)
         
-                # if provided data is valid product data. 
-                if productSerializer.is_valid():
-                    productSSaved = productSerializer.save()
+            # if provided data is valid product data. 
+            if productSerializer.is_valid():
+                productSSaved = productSerializer.save()
 
-                    # TODO: Call async to send email to those responsible for the product of this change. Async!!
+                # TODO: Call async to send email to those responsible for the product of this change. Async!!
 
-                    return Response(productSSaved.data, status =status.HTTP_200_OK)
-                else:
-                    return Response({'error':'Could not edit the product.'}, status=status.HTTP_400_BAD_REQUEST)
-            
-            # merchant does not have permission to edit this product: Competitors product.
+                return Response(productSSaved.data, status =status.HTTP_200_OK)
             else:
-                return Response({'error':'Not allowed to view this product.'}, status=status.HTTP_401_UNAUTHORIZED)
+                return Response({'error':'Could not edit the product.'}, status=status.HTTP_400_BAD_REQUEST)
+            
+        # merchant does not have permission to edit this product: Competitors product.
+        else:
+            return Response({'error':'Not allowed to view this product.'}, status=status.HTTP_401_UNAUTHORIZED)
 
-        except Product.DoesNotExist:
-            return Response({'error':'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+    except Product.DoesNotExist:
+        return Response({'error':'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# get product
+@api_view(['GET'])
+@permission_classes([permissions.IsAuthenticated, utils.IsManager, utils.IsMerchant])
+@renderer_classes([BrowsableAPIRenderer, JSONRenderer])
+def getProductAdmin(request, pk):
+
+    user = request.user
+
+    try:
+        product = None
+
+        # if manager.
+        if user.groups.filter(name = 'Manager').exist():
+            product = Product.objects.get(pk = pk)
+        elif user.groups.filter(name = 'Merchant').exist():
+            # To prevent subbotaging the competitor's products.
+            product = Product.objects.get(pk = pk, managerOrMerchant = user)
+            
+        # if product was found.
+        if product:
+            productSerializer = ProductManagerSerializer(instance=product)
+            return Response(productSerializer.data, status =status.HTTP_200_OK)
+        else:
+            return Response({'error':'Not allowed to view this product.'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    except Product.DoesNotExist:
+        return Response({'error': 'Product not found.'}, status=status.HTTP_404_NOT_FOUND)
 
 
 # useed for display single product
@@ -115,15 +136,18 @@ def getProductForDisplay(request, pk = None):
         return Response({'error':'Product not found.'},status=status.HTTP_404_NOT_FOUND)
 
 
-# get the first 500 products
+# get the first n products
 # get based on query 
 @api_view(['GET'])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
-@permission_classes([permissions.AllowAny])
+#@permission_classes([permissions.AllowAny])
 def getProductsQuery(request):
 
     q = request.GET.get('q')
+    n = int(request.GET.get('count') if request.GET.get('count') else 200)
     categoryQ = request.GET.get('category')
+    special = request.GET.get('special')
+    featured = request.GET.get('featured')
 
     products = None
 
@@ -131,11 +155,38 @@ def getProductsQuery(request):
     # later on Brand, Manufacturer, location
 
     if q:
-        products = Product.objects.filter(Q(Name__contains = q) | Q(Description__contains = q) | Q(isActive = True))[:200]
+        products = Product.objects.filter(Q(Name__contains = q) | Q(Description__contains = q) | Q(isActive = True))
     else:
-        products = Product.objects.filter(isActive = True).all()[:200]
+        products = Product.objects.filter(isActive = True)
+        
+        
+    # TODO: filter based on product special
+    if special == "yes":
+        products = products.filter(Q(isSpecial = True))
+    
+    # TODO: Filter based on category special
+    '''if featured == "true":
+        products = prooducts.filter(isFeatured = True)'''
+    
+    # TODO: filter based on royalty points.
+    
+    # TODO: Filter based on membership discount.
+    
+    # filter by price range.
+    max_priceQ = request.GET.get('max_price')
+    min_priceQ = request.GET.get('min_price')
 
-    # filter by category.
+    if max_priceQ and min_priceQ:
+
+        try:
+            max_price = int(max_priceQ)
+            min_price = int(min_priceQ)
+
+            products = products.filter(Price__range=(min_price, max_price))
+        except (TypeError, ValueError, OverflowError, ArithmeticError, FloatingPointError,):
+            pass
+
+    # TODO: filter by category.
     if categoryQ:
 
         category = Category.objects.filter(Name__contains = categoryQ).first()
@@ -150,22 +201,7 @@ def getProductsQuery(request):
         if len(prodArray) > 0:
             products = prodArray
 
-
-    # filter by price range.
-    max_priceQ = request.GET.get('max_price')
-    min_priceQ = request.GET.get('min_price')
-
-    if max_priceQ and min_priceQ:
-
-        try:
-            max_price = int(max_priceQ)
-            min_price = int(min_priceQ)
-
-            products = products.filter(Price__range=(min_price, max_price))
-        except (TypeError, ValueError, OverflowError, ArithmeticError, FloatingPointError,):
-            pass
-    
-    productSerializer = ProductDisplaySerializer(products, many=True)
+    productSerializer = ProductDisplaySerializer(products[:n], many=True)
     return Response(productSerializer.data, status=status.HTTP_200_OK)
 
 
@@ -178,8 +214,6 @@ def getProductcategories(request, pk = None):
 
     # if user is manager or merchant.
     user = request.user
-    if user.groups.filter(Q(name = 'Merchant') | Q(name = 'Manager')).exists() == False:
-        return Response({'error':'Not allowed'}, status=status.HTTP_401_UNAUTHORIZED)
     
     try:
         categories = None
@@ -232,9 +266,18 @@ def getAllCategories(request):
 
 
 # get product reviews
+@swagger_auto_schema(methods=['post', 'put', 'patch'], 
+    request_body=openapi.Schema(
+    type=openapi.TYPE_OBJECT, # object because the data is in json format
+    properties={
+        'review':openapi.Schema(type=openapi.TYPE_STRING, description = 'The product review message'),
+        'starsCount': openapi.Schema(type=openapi.TYPE_NUMBER, description = 'The number of stars given to the product.'),
+    },
+    
+), operation_id="editproductreview_view_id")
 @api_view(['POST', 'PUT', 'PATCH'])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
-@permission_classes([permissions.IsAuthenticated,])
+@permission_classes([permissions.IsAuthenticated])
 def editProductReviews(request, pk = None):
     
     data = request.data
@@ -258,15 +301,17 @@ def editProductReviews(request, pk = None):
 
             # if review is in the database.
             if review:
-                revS = ProductReviewSerializer(instance =review, many = False, data=data)
+                
+                data['isEdited'] = True
+                revS = ProductReviewSerializer(instance =review, many = False, data=data, partial=True)
 
                 if revS.is_valid():
                     # update data on database.
-                    revSSaved = revS.save()
-
+                    revS.save()
+                   
                     # TODO: Call async to send email/create notification to those responsible for the product of this change/edit. Async!!
 
-                    return Response(revSSaved.data, status=status.HTTP_200_OK)
+                    return Response(revS.data, status=status.HTTP_200_OK)
     
         except ProductReview.DoesNotExist:
             return Response({'error':' Product review not found.'}, status=status.HTTP_404_NOT_FOUND)
@@ -275,16 +320,22 @@ def editProductReviews(request, pk = None):
 
 
 # update the categories of a products
+@swagger_auto_schema(methods=['post', 'put', 'patch'], 
+    request_body=openapi.Schema(
+    type=openapi.TYPE_OBJECT, # object because the data is in json format
+    properties={
+        'categories': openapi.Schema(type=openapi.TYPE_STRING, description='This is a string of category names. Separated by #'),
+    },
+    
+), operation_id="updatecategories_view_id")
 @api_view(['PUT', 'PATCH', 'POST'])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
-@permission_classes([permissions.IsAuthenticated,])
+@permission_classes([permissions.IsAuthenticated, utils.IsManager, utils.IsMerchant])
 def updateProductCategories(request, pk = None):
 
     # check if user is manager or merchant.
     user = request.user
-    if user.groups.filter(Q(name = 'Merchant') | Q(name = 'Manager')).exists() == False:
-        return Response({'error':'Not allowed'}, status=status.HTTP_401_UNAUTHORIZED)
-
+    
     data = request.data.get('categories')
 
     if not data or '#' not in data:
@@ -300,7 +351,7 @@ def updateProductCategories(request, pk = None):
             product = Product.objects.get(pk = pk)
 
             # can create or get a categories.
-            cat_obj_list = [Category.objects.get_or_create(Name = category)[0] for category in cat_list]
+            cat_obj_list = [Category.objects.get_or_create(Name = category.strip())[0] for category in cat_list]
 
             # set to list of categories.
             product.Categories.set(cat_obj_list)
@@ -322,7 +373,7 @@ def updateProductCategories(request, pk = None):
             cat_rejected = []
 
             for cat in cat_list:
-                catObj = Category.objects.filter(Name = cat).first()
+                catObj = Category.objects.filter(Name = cat.strip()).first()
 
                 if catObj:
                     cat_obj_list.append(catObj)

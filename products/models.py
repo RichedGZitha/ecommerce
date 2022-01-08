@@ -25,8 +25,11 @@ class Product(models.Model):
     # max value = 99 999 999.99, 2 digits for decimal and 8 for other number.
     Price = models.DecimalField(max_digits = 10, decimal_places=2, default = 0.00)
     isSpecial = models.BooleanField(default=False)
+    isFeatured = models.BooleanField(default=False)
     isActive = models.BooleanField(default=False)
     Description = models.TextField()
+    FullDescription = models.TextField(null = True, blank=True)
+    Specifications = models.TextField(null = True, blank=True)
     Categories = models.ManyToManyField(to=Category, related_name='productCategories', blank=True)
     managerOrMerchant = models.ForeignKey(to = CustomUser, on_delete=models.SET_NULL, null=True)
     FrontImage = CloudinaryField('images')
@@ -55,4 +58,4 @@ class ProductReview(models.Model):
         unique_together = (('user', 'product'),)
 
     def __str__(self) -> str:
-        return self.user.username + " gave " + self.product.Name + " " + str(self.product.starsCount) + " stars"
+        return self.user.username + " gave " + self.product.Name + " " + str(self.starsCount) + " stars"

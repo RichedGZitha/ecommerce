@@ -62,17 +62,24 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
         return data
 
+# user serializer
+class UserSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = CustomUser
+        fields = ['first_name', 'last_name', 'email', 'username', 'id']
+
 
 # user profile serializer
 class UserProfileSerializer(serializers.ModelSerializer):
-    
+    user = UserSerializer(read_only=True)
     loyaltyPoints = serializers.SerializerMethodField(read_only=True)
     HeaderImage = serializers.SerializerMethodField(read_only = True)
     Avatar = serializers.SerializerMethodField(read_only = True)
 
     class Meta:
         model = UserProfile
-        fields = ['Country', 'Contact', 'HeaderImage', 'Avatar', 'loyaltyPoints']
+        fields = ['Country', 'Contact', 'HeaderImage', 'Avatar', 'loyaltyPoints', 'isSeller', 'isManager', 'user']
 
     def get_loyaltyPoints(self, obj):
         return obj.loyaltyPoints
@@ -82,14 +89,6 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     def get_Avatar(self, obj):
         return obj.Avatar.url if obj.Avatar else  None
-
-
-# user serializer
-class UserSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = CustomUser
-        fields = ['first_name', 'last_name', 'email', 'username', 'id']
 
 
 # profile images serializer

@@ -10,6 +10,7 @@ from drf_yasg.utils import swagger_auto_schema
 from main import serializers
 from main.models import Coupon
 from transactions.models import Invoice, Order, Shipment
+from products.models import Product
 from transactions.serializers import InvoiceSerializer, OrderSerializer, ShipmentSerializer
 
 
@@ -63,16 +64,25 @@ def makeTransaction(request):
     data = request.data
 
     if data:
-
+        
+        address = data.get('address')
+        phone = data.get('phone')
+        firstname = data.get('firstname')
+        lastname = data.get('lastname')
+        email = data.get('email')
+        
         ordersArray = data.get('orders')
         discountcode = data.get('coupon')
+        
+        isDataGiven = address and phone and firstname and lastname and email
 
         # if the orders were supplied.
-        if ordersArray:
+        if ordersArray and isDataGiven:
             # create invoice
             invoice  = Invoice.objects.create(user = user)
 
-            # create all order from array
+            # get all products using the IN SQL operator.
+            products = Product.objects.filter(pk__in = [x.id for x in ordersArray])
             # Quantity, unitPrice, product
 
             tax = float(0.00)
@@ -80,14 +90,25 @@ def makeTransaction(request):
             subtotal = float(0.00)
             grandtotal = float(0.00)
             
-            for order in ordersArray:
+            # TODO: based on address we need to determine the shipping cost.
+            # Based on weight, region, price and amount.
+
+            # but for now we will use hardcoded values.
+            shipmentCost = float(25.00)
+            
+            for i in range(0, len(products)):
                 
                 # used for the invoice.
-                tax += (order.quantity * order.unitprice) * 0.15
-                subtotal +=  (order.quantity * order.unitprice)
+                if ordersArray[i].id == products[i].pk:
+                    tax      +=  (ordersArray[i].quantity * products[i].Price) * 0.15
+                    subtotal +=  (ordersArray[i].quantity * products[i].Price)
+                    
+                    # add the unit price from the database into the order for security reasons.
+                    ordersArray[i]["unitPrice"] = products[i].Price
+                    
 
-                # create order
-                Order.objects.create(Quantity = order.quantity, UnitPrice = order.unitprice, OrderPrice = order.unitprice * order.quantity, product = order.product)
+            # create all orders at same time.
+            Order.objects.bulk_create([Order(Quantity = x.quantity, UnitPrice = x.unitPrice, OrderPrice = x.unitPrice * x.quantity, product = x.id) for x in ordersArray])
 
             # apply a coupon
             if discountcode:
@@ -103,14 +124,19 @@ def makeTransaction(request):
                     pass
                  
             # update the invoice tax, discount, subtotal, grandtotal.
-            grandtotal = (subtotal + tax) - discount
+            grandtotal = (subtotal + tax + shipmentCost) - discount
 
             invoice.Tax = tax
             invoice.Discount = discount
             invoice.SubTotal = subtotal
             invoice.GrandTotal = grandtotal
-            invoice.save() 
-
+            invoice.ShipmentCost = shipmentCost
+            
+            # create new shipment.
+            shipment = Shipment.objects.create(Address = address, Firstname = firstname, Lastname = lastname, Email = email, invoice = invoice.pk, ShipmentCost = shipmentCost)
+            
+            invoice.save()
+                        
             return Response({'success':'Your purchase was successful.', 'invoice': invoice.pk}, status=status.HTTP_200_OK)
     
     return Response({'error': 'Could not make purchase'}, status=status.HTTP_400_BAD_REQUEST)
@@ -177,3 +203,53 @@ def createShipment(request, pk = None):
                 return Response({'error': 'Could not find invoice.'}, status=status.HTTP_404_NOT_FOUND)
 
     return Response({'error': 'Could not create a shipment.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+@api_view(['POST'])
+@renderer_classes([BrowsableAPIRenderer, JSONRenderer])
+@permission_classes([permissions.IsAuthenticated])
+def CalculateGrandTotal(request):
+        
+        orders = request.data.get('orders')
+        discountcode = request.data.get('discount')
+        
+        products = Product.objects.filter(pk__in=[ x.id for x in data ])
+        
+        if len(products) > 0 and products:
+            subtotal = float(0.0)
+            tax = float(0.0)
+            
+            # TODO: Shipment must be based on weight, location and size.
+            shipment = float(25.0)
+            discount = float(0.0)
+            
+            # for every product multiply the price with the quantity to get the subtotal.
+            for index in range(0, len(products)):
+                if orders[index].id == products[index].pk:
+                    subtotal += orders[index].quantity * products[index].Price
+            
+            # 15% of VAT.
+            tax = subtotal * 0.15
+            
+            # apply a coupon
+            if discountcode:
+                try:
+                    coupon = Coupon.objects.get(Code = discountcode, expiredDate__lte = datetime.now(), isValid = True)
+                    discount += coupon.amount
+
+                    # invalidate the coupon.
+                    coupon.isValid = False
+                    coupon.save()
+
+                except Coupon.DoesNotExist:
+                    pass
+            
+            grandtotal = float(0.0)
+            
+            grandtotal = subtotal + tax + shipment - discount
+            
+            return Response({'grandtotal': grandtotal, 'subtotal': subtotal, 'tax': tax, 'shipment':shipment}, status= status.HTTP_200_OK)
+            
+        else:
+            return Response({'error': 'Could not make the calculations.'}, status=status.HTTP_400_BAD_REQUEST)

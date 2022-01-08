@@ -50,7 +50,17 @@ class ProductDisplaySerializer(serializers.ModelSerializer):
 
 # product review serializer
 class ProductReviewSerializer(serializers.ModelSerializer):
+    username = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = models.ProductReview
-        fields = ['id', 'starsCount', 'review', 'user', 'product']
+        fields = ['id', 'starsCount', 'review', 'user', 'product', 'username', 'avatar', 'created', 'isEdited']
+        
+    def get_username(self, obj):
+        
+        return obj.user.username
+    
+    def get_avatar(self, obj):
+        return obj.user.userprofile.Avatar.url if obj.user.userprofile.Avatar else None
+    

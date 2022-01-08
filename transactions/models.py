@@ -1,3 +1,4 @@
+import uuid
 from django.core.validators import MaxLengthValidator
 from django.db import models
 from main.models import CustomUser
@@ -48,6 +49,7 @@ class Shipment(models.Model):
     isArrived = models.BooleanField(default=False)
     Phone = models.CharField(max_length=20, validators=[MaxLengthValidator])
     Email = models.EmailField()
+    Code = models.UUIDField(default=uuid.uuid4, unique=True)
     Firstname = models.CharField(max_length=100, validators=[MaxLengthValidator])
     Lastname = models.CharField(max_length=100, validators=[MaxLengthValidator])
 

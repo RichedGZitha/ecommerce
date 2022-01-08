@@ -10,7 +10,7 @@ def create_profile(sender, instance, created, **kwargs):
             user = instance,
         ).save()
 
-    print("User profile created.")
+    #print("User profile created.")
 
 
 ''' user updated
