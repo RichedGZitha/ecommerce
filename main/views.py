@@ -1,3 +1,5 @@
+import os
+import requests
 from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
@@ -18,7 +20,6 @@ from main.models import Coupon, CustomUser, UserProfile
 from main.serializers import UserProfileSerializer, UserSerializer, ProfileImagesSerilizer
 
 from django.middleware.csrf import get_token
-import requests
 
 # verify email upon registration.
 @api_view(['GET'])
@@ -32,7 +33,7 @@ def activateUser(request, uid = None, token = None):
         
         context = {'title': 'Activation complete', 'heading':'Account activation successful', 
         'message':'Thank you for creating an account with us. Feel free to contact us should you encounter any issues.', 
-        'redirect':'http://127.0.0.1:3000', 'action':'Sign in'}
+        'redirect': os.environ.get('FRONTEND_URL', 'http://127.0.0.1:3000'), 'action':'Sign in'}
 
         if response.status_code == 204:
             #return Response({}, response.status_code)
@@ -87,7 +88,7 @@ def usernameReestConfirm(request, uid = None, token=None):
 @permission_classes([permissions.AllowAny,])
 def passwordReestConfirm(request, uid = None, token=None):
         
-        redirect = 'http://127.0.0.1:3000'
+        redirect = os.environ.get('FRONTEND_URL', 'http://127.0.0.1:3000')
         baseURL  = 'http://127.0.0.1:8000'
 
         if request.method == 'POST':
@@ -125,7 +126,7 @@ def passwordResetSuccessful(request):
         
         context = {'title': 'Password Reset complete', 'heading':'Password Reset successful', 
         'message':'Your password was successfuly reset. Feel free to contact us should you encounter any issues.', 
-        'redirect':'http://127.0.0.1:3000', 'action':'Sign in'}
+        'redirect':os.environ.get('FRONTEND_URL', 'http://127.0.0.1:3000'), 'action':'Sign in'}
 
         
         return render(request,'main/auth/passwordResetSuccessful.html', context)
@@ -233,10 +234,10 @@ def profileImages(request):
         if(serializer.is_valid()):
             updated_pic_url = serializer.save()
 
-            header = updated_pic_url.HeaderImage.url if updated_pic_url.HeaderImage else None
-            avatar = updated_pic_url.Avatar.url if updated_pic_url.Avatar else None
+            header = updated_pic_url.header_image.url if updated_pic_url.header_image else None
+            avatar = updated_pic_url.avatar.url if updated_pic_url.avatar else None
 
-            return Response({'HeaderImage': header, 'Avatar': avatar}, status=status.HTTP_200_OK)
+            return Response({'header_image': header, 'avatar': avatar}, status=status.HTTP_200_OK)
 
     return Response({'error': 'Could not update profile images'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -250,7 +251,7 @@ def getCouponAmount(request, code=None):
 
     try:
 
-        coupon = Coupon.objects.get(Code = code , isValid = True)
+        coupon = Coupon.objects.get(code = code , isValid = True)
         return Response({'amount': coupon.amount}, status=status.HTTP_200_OK)
 
     except Coupon.DoesNotExist:

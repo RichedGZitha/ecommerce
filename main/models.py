@@ -36,14 +36,21 @@ class CustomUser(AbstractUser):
 
 # user profile
 class UserProfile(models.Model):
-    Biography = models.TextField()
-    Country = models.CharField(max_length = 150, validators=[MaxLengthValidator], null=True, blank=True)
-    Contact = models.CharField(max_length = 50, validators=[MaxLengthValidator], null=True, blank=True)
-    HeaderImage = CloudinaryField('images')
-    Avatar = CloudinaryField('images')
-    isSeller = models.BooleanField(default = False)
-    isManager = models.BooleanField(default = False)
-    loyaltyPoints = models.IntegerField(default = 0)
+    biography = models.TextField()
+    country = models.CharField(max_length = 150, validators=[MaxLengthValidator], null=True, blank=True)
+    
+    street_name =  models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
+    suburb =  models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
+    city =  models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
+    province = models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
+    postal_code = models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
+    
+    contact = models.CharField(max_length = 50, validators=[MaxLengthValidator], null=True, blank=True)
+    header_image = CloudinaryField('images')
+    avatar = CloudinaryField('images')
+    is_seller = models.BooleanField(default = False)
+    is_manager = models.BooleanField(default = False)
+    loyalty_points = models.IntegerField(default = 0)
     user = models.OneToOneField(to = CustomUser,  on_delete = models.CASCADE)
 
     def __str__(self):
@@ -54,11 +61,11 @@ class UserProfile(models.Model):
 class Coupon(models.Model):
 
     # max value: 9.99, 2 digits for decimal point and 1 for other.
-    amount = models.DecimalField(max_digits = 3, decimal_places = 2)
-    Code = models.UUIDField(default=uuid.uuid4, unique=True)
-    isValid = models.BooleanField(default = True)
-    createdDate = models.DateTimeField(auto_now_add = True)
-    expiredDate = models.DateTimeField()
+    amount = models.DecimalField(max_digits = 3, decimal_places = 2) 
+    code = models.UUIDField(default=uuid.uuid4, unique=True)
+    is_valid = models.BooleanField(default = True)
+    created_date = models.DateTimeField(auto_now_add = True)
+    expired_date = models.DateTimeField()
     admin = models.ForeignKey(to = CustomUser, on_delete = models.SET_NULL, null = True)
 
     def __str__(self):

@@ -1,3 +1,4 @@
+import random
 from rest_framework.response import Response
 from rest_framework import permissions
 from rest_framework import status, generics
@@ -35,12 +36,12 @@ class CreateProductReview(generics.CreateAPIView):
     request_body=openapi.Schema(
     type=openapi.TYPE_OBJECT, # object because the data is in json format
     properties={
-        'Name':openapi.Schema(type=openapi.TYPE_STRING, description = 'Name of the product.'),
-        'Quantity':openapi.Schema(type=openapi.TYPE_NUMBER, description = 'Quantity of products left.'),
-        'Price':openapi.Schema(type=openapi.TYPE_NUMBER, description = 'Price of the product.'),
-        'isSpecial':openapi.Schema(type=openapi.TYPE_BOOLEAN, description = 'Indicates whether the product is on special.'),
-        'isActive':openapi.Schema(type=openapi.TYPE_BOOLEAN, description = 'Indicates whether the product is active.'),
-        'Description':openapi.Schema(type=openapi.TYPE_STRING, description = 'Description of the product.')
+        'name':openapi.Schema(type=openapi.TYPE_STRING, description = 'Name of the product.'),
+        'quantity':openapi.Schema(type=openapi.TYPE_NUMBER, description = 'Quantity of products left.'),
+        'price':openapi.Schema(type=openapi.TYPE_NUMBER, description = 'Price of the product.'),
+        'is_special':openapi.Schema(type=openapi.TYPE_BOOLEAN, description = 'Indicates whether the product is on special.'),
+        'is_active':openapi.Schema(type=openapi.TYPE_BOOLEAN, description = 'Indicates whether the product is active.'),
+        'description':openapi.Schema(type=openapi.TYPE_STRING, description = 'Description of the product.')
     },
 
     required = []
@@ -129,8 +130,16 @@ def getProductForDisplay(request, pk = None):
 
         product = Product.objects.get(pk = pk)
         pSerializer = ProductDisplaySerializer(instance=product)
-
-        return Response(pSerializer.data, status = status.HTTP_200_OK)
+        
+        similar_products = Product.objects.filter(categories__in = [x.id for x in product.categories.all()]).exclude(pk = product.pk).distinct()
+        
+        if len(similar_products) >= 4:
+            similar_products = random.sample(list(similar_products), 4)
+        
+        data = pSerializer.data
+        data["similar"] = [{'id':x.id, 'name':x.name, 'front_image':x.front_image.url if x.front_image else None, 'price': x.Price, 'description': x.description} for x in similar_products]
+        
+        return Response(data, status = status.HTTP_200_OK)
 
     except Product.DoesNotExist:
         return Response({'error':'Product not found.'},status=status.HTTP_404_NOT_FOUND)
@@ -155,18 +164,18 @@ def getProductsQuery(request):
     # later on Brand, Manufacturer, location
 
     if q:
-        products = Product.objects.filter(Q(Name__contains = q) | Q(Description__contains = q) | Q(isActive = True))
+        products = Product.objects.filter(Q(name__contains = q) | Q(description__contains = q) | Q(is_active = True))
     else:
-        products = Product.objects.filter(isActive = True)
+        products = Product.objects.filter(is_active = True)
         
         
     # TODO: filter based on product special
     if special == "yes":
-        products = products.filter(Q(isSpecial = True))
+        products = products.filter(Q(is_special = True))
     
     # TODO: Filter based on category special
-    '''if featured == "true":
-        products = prooducts.filter(isFeatured = True)'''
+    if featured == "true":
+        products = products.filter(is_featured = True)
     
     # TODO: filter based on royalty points.
     
@@ -182,14 +191,14 @@ def getProductsQuery(request):
             max_price = int(max_priceQ)
             min_price = int(min_priceQ)
 
-            products = products.filter(Price__range=(min_price, max_price))
+            products = products.filter(price__range=(min_price, max_price))
         except (TypeError, ValueError, OverflowError, ArithmeticError, FloatingPointError,):
             pass
 
     # TODO: filter by category.
     if categoryQ:
 
-        category = Category.objects.filter(Name__contains = categoryQ).first()
+        category = Category.objects.filter(name__contains = categoryQ).first()
         prodArray = []
 
         for prod in products:
@@ -271,7 +280,7 @@ def getAllCategories(request):
     type=openapi.TYPE_OBJECT, # object because the data is in json format
     properties={
         'review':openapi.Schema(type=openapi.TYPE_STRING, description = 'The product review message'),
-        'starsCount': openapi.Schema(type=openapi.TYPE_NUMBER, description = 'The number of stars given to the product.'),
+        'stars_count': openapi.Schema(type=openapi.TYPE_NUMBER, description = 'The number of stars given to the product.'),
     },
     
 ), operation_id="editproductreview_view_id")
@@ -302,7 +311,7 @@ def editProductReviews(request, pk = None):
             # if review is in the database.
             if review:
                 
-                data['isEdited'] = True
+                data['is_edited'] = True
                 revS = ProductReviewSerializer(instance =review, many = False, data=data, partial=True)
 
                 if revS.is_valid():
@@ -373,7 +382,7 @@ def updateProductCategories(request, pk = None):
             cat_rejected = []
 
             for cat in cat_list:
-                catObj = Category.objects.filter(Name = cat.strip()).first()
+                catObj = Category.objects.filter(name = cat.strip()).first()
 
                 if catObj:
                     cat_obj_list.append(catObj)

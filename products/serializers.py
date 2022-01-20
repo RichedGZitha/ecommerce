@@ -1,3 +1,4 @@
+import random
 from rest_framework import serializers
 from rest_framework.fields import ReadOnlyField
 from . import models
@@ -6,46 +7,63 @@ from . import models
 class CategorySerializer(serializers.ModelSerializer):
      class Meta:
          model = models.Category
-         fields =['Name']
+         fields =['name']
 
 
 class ProductManagerSerializer(serializers.ModelSerializer):
 
-    FrontImage = serializers.SerializerMethodField(read_only=False)
-    RearImage = serializers.SerializerMethodField(read_only=False)
+    front_image = serializers.SerializerMethodField(read_only=False)
+    rear_image = serializers.SerializerMethodField(read_only=False)
 
     class Meta:
         model = models.Product
-        fields = ['id', 'Name', 'Quantity', 'Price', 'isSpecial', 'isActive', 'Description', 'FrontImage', 'RearImage']
+        fields = ['id', 'name', 'quantity', 'price', 'is_special', 'is_active', 'description', 'front_image', 'rear_image']
 
-    def get_RearImage(self, obj):
-        return obj.RearImage.url if obj.RearImage else None
+    def get_rear_image(self, obj):
+        return obj.rear_image.url if obj.rear_image else None
 
-    def get_FrontImage(self, obj):
+    def get_front_image(self, obj):
 
-        return obj.FrontImage.url if obj.FrontImage else None
+        return obj.front_image.url if obj.front_image else None
 
 
 # get product for display only
 class ProductDisplaySerializer(serializers.ModelSerializer):
 
-    FrontImage = serializers.SerializerMethodField(read_only=True)
-    RearImage = serializers.SerializerMethodField(read_only=True)
-    id = serializers.SerializerMethodField(read_only=True)
+    front_image = serializers.SerializerMethodField(read_only=True)
+    rear_image = serializers.SerializerMethodField(read_only=True)
+    id = serializers.SerializerMethodField(read_only = True)
+    #Similar = serializers.SerializerMethodField(read_only = True)
 
     class Meta:
         model = models.Product
-        fields = ['Name', 'Quantity', 'Price', 'Description', 'FrontImage', 'RearImage', 'id']
+        fields = ['name', 'quantity', 'price', 'description', 'front_image', 'rear_image', 'id']
 
     def get_id(self, obj):
         return obj.pk
 
-    def get_RearImage(self, obj):
-        return obj.RearImage.url if obj.RearImage else None
+    def get_rear_image(self, obj):
+        return obj.rear_image.url if obj.rear_image else None
 
-    def get_FrontImage(self, obj):
+    def get_front_image(self, obj):
 
-        return obj.FrontImage.url if obj.FrontImage else None
+        return obj.front_image.url if obj.front_image else None
+    
+    '''def get_Similar(self, obj):
+        
+        #print(obj.Categories.all())
+        #print()
+        
+        #similar_products = list(obj.Categories.Product.exclude(id=obj.id))
+        
+        similar_products = models.Product.objects.filter(Categories__in = [x.id for x in obj.Categories.all()])
+        
+        #similar_products = ['', '', '', '' '', '']
+        
+        if len(similar_products) >= 4:
+            similar_products = random.sample(list(similar_products), 4)
+        
+        return similar_products'''
 
 
 # product review serializer
@@ -55,12 +73,12 @@ class ProductReviewSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.ProductReview
-        fields = ['id', 'starsCount', 'review', 'user', 'product', 'username', 'avatar', 'created', 'isEdited']
+        fields = ['id', 'stars_count', 'review', 'user', 'product', 'username', 'avatar', 'created', 'is_edited']
         
     def get_username(self, obj):
         
         return obj.user.username
     
     def get_avatar(self, obj):
-        return obj.user.userprofile.Avatar.url if obj.user.userprofile.Avatar else None
+        return obj.user.userprofile.avatar.url if obj.user.userprofile.avatar else None
     
