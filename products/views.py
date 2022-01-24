@@ -137,7 +137,8 @@ def getProductForDisplay(request, pk = None):
             similar_products = random.sample(list(similar_products), 4)
         
         data = pSerializer.data
-        data["similar"] = [{'id':x.id, 'name':x.name, 'front_image':x.front_image.url if x.front_image else None, 'price': x.Price, 'description': x.description} for x in similar_products]
+        
+        data["similar"] = [{'id':x.id, 'name':x.name, 'front_image':x.front_image.url if x.front_image else None, 'price': x.price, 'description': x.description} for x in similar_products]
         
         return Response(data, status = status.HTTP_200_OK)
 
@@ -152,7 +153,7 @@ def getProductForDisplay(request, pk = None):
 #@permission_classes([permissions.AllowAny])
 def getProductsQuery(request):
 
-    q = request.GET.get('q')
+    q = request.GET.get('name')
     n = int(request.GET.get('count') if request.GET.get('count') else 200)
     categoryQ = request.GET.get('category')
     special = request.GET.get('special')
@@ -164,7 +165,7 @@ def getProductsQuery(request):
     # later on Brand, Manufacturer, location
 
     if q:
-        products = Product.objects.filter(Q(name__contains = q) | Q(description__contains = q) | Q(is_active = True))
+        products = Product.objects.filter(Q(name__icontains = q) | Q(description__icontains = q) & Q(is_active = True))
     else:
         products = Product.objects.filter(is_active = True)
         
@@ -176,8 +177,6 @@ def getProductsQuery(request):
     # TODO: Filter based on category special
     if featured == "true":
         products = products.filter(is_featured = True)
-    
-    # TODO: filter based on royalty points.
     
     # TODO: Filter based on membership discount.
     
@@ -195,22 +194,18 @@ def getProductsQuery(request):
         except (TypeError, ValueError, OverflowError, ArithmeticError, FloatingPointError,):
             pass
 
-    # TODO: filter by category.
+    # filter by category.
     if categoryQ:
 
-        category = Category.objects.filter(name__contains = categoryQ).first()
-        prodArray = []
-
-        for prod in products:
-
-            if category in prod.categories:
-                prodArray.append(prod)
-
-        # only add if there is match.
-        if len(prodArray) > 0:
-            products = prodArray
-
+        # if the category is not all.
+        if categoryQ != "All":
+            category = Category.objects.filter(name = categoryQ).first()
+            products = products.filter(categories__in = [category]).distinct()
+        else:
+            pass
+    
     productSerializer = ProductDisplaySerializer(products[:n], many=True)
+    
     return Response(productSerializer.data, status=status.HTTP_200_OK)
 
 

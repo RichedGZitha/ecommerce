@@ -33,11 +33,14 @@ class ProductDisplaySerializer(serializers.ModelSerializer):
     front_image = serializers.SerializerMethodField(read_only=True)
     rear_image = serializers.SerializerMethodField(read_only=True)
     id = serializers.SerializerMethodField(read_only = True)
+    in_stock = serializers.SerializerMethodField(read_only = True)
+    average_stars = serializers.SerializerMethodField(read_only = True)
+    
     #Similar = serializers.SerializerMethodField(read_only = True)
 
     class Meta:
         model = models.Product
-        fields = ['name', 'quantity', 'price', 'description', 'front_image', 'rear_image', 'id']
+        fields = ['name', 'quantity', 'price', 'description', 'front_image', 'rear_image', 'id', 'in_stock', 'average_stars']
 
     def get_id(self, obj):
         return obj.pk
@@ -48,6 +51,12 @@ class ProductDisplaySerializer(serializers.ModelSerializer):
     def get_front_image(self, obj):
 
         return obj.front_image.url if obj.front_image else None
+    
+    def get_in_stock(self, obj):
+        return obj.in_stock()
+    
+    def get_average_stars(self, obj):
+        return obj.get_average_stars()
     
     '''def get_Similar(self, obj):
         

@@ -37,15 +37,15 @@ class CustomUser(AbstractUser):
 # user profile
 class UserProfile(models.Model):
     biography = models.TextField()
-    country = models.CharField(max_length = 150, validators=[MaxLengthValidator], null=True, blank=True)
+    country = models.CharField(max_length = 256, validators=[MaxLengthValidator], null=True, blank=True)
     
-    street_name =  models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
+    street_address =  models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
     suburb =  models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
     city =  models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
     province = models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
     postal_code = models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
     
-    contact = models.CharField(max_length = 50, validators=[MaxLengthValidator], null=True, blank=True)
+    contact_number = models.CharField(max_length = 50, validators=[MaxLengthValidator], null=True, blank=True)
     header_image = CloudinaryField('images')
     avatar = CloudinaryField('images')
     is_seller = models.BooleanField(default = False)

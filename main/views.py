@@ -4,6 +4,10 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
 from django.urls import reverse
+from django.conf import settings
+from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponse, HttpResponseRedirect
+from django.middleware.csrf import get_token
 
 from drf_yasg import openapi
 from drf_yasg.utils import swagger_auto_schema
@@ -19,7 +23,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from main.models import Coupon, CustomUser, UserProfile
 from main.serializers import UserProfileSerializer, UserSerializer, ProfileImagesSerilizer
 
-from django.middleware.csrf import get_token
 
 # verify email upon registration.
 @api_view(['GET'])
@@ -33,7 +36,7 @@ def activateUser(request, uid = None, token = None):
         
         context = {'title': 'Activation complete', 'heading':'Account activation successful', 
         'message':'Thank you for creating an account with us. Feel free to contact us should you encounter any issues.', 
-        'redirect': os.environ.get('FRONTEND_URL', 'http://127.0.0.1:3000'), 'action':'Sign in'}
+        'redirect': settings.FRONTEND_URL, 'action':'Sign in'}
 
         if response.status_code == 204:
             #return Response({}, response.status_code)
@@ -88,7 +91,7 @@ def usernameReestConfirm(request, uid = None, token=None):
 @permission_classes([permissions.AllowAny,])
 def passwordReestConfirm(request, uid = None, token=None):
         
-        redirect = os.environ.get('FRONTEND_URL', 'http://127.0.0.1:3000')
+        redirect = settings.FRONTEND_URL
         baseURL  = 'http://127.0.0.1:8000'
 
         if request.method == 'POST':
@@ -126,7 +129,7 @@ def passwordResetSuccessful(request):
         
         context = {'title': 'Password Reset complete', 'heading':'Password Reset successful', 
         'message':'Your password was successfuly reset. Feel free to contact us should you encounter any issues.', 
-        'redirect':os.environ.get('FRONTEND_URL', 'http://127.0.0.1:3000'), 'action':'Sign in'}
+        'redirect':settings.FRONTEND_URL, 'action':'Sign in'}
 
         
         return render(request,'main/auth/passwordResetSuccessful.html', context)
@@ -258,11 +261,32 @@ def getCouponAmount(request, code=None):
         return Response({'error': 'Coupon code not valid.'}, status=status.HTTP_400_BAD_REQUEST)
         
 
+# get the shipment information of the user for checkout.    
+@api_view(['GET'])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
+@permission_classes([permissions.IsAuthenticated,]) 
+def GetShipmentAdressView(request):
+    
+    profile = request.user.userprofile
+    data = dict()
+    
+    data["phone"] = profile.contact_number
+    data["email"] = request.user.email
+    data["country"] = profile.country
+    data["street_address"] = profile.street_address
+    data["city"] = profile.city
+    data["postal_code"] = profile.postal_code
+    data["suburb"] = profile.suburb
+    data["province"] = profile.province
+    
+    return Response(data, status=status.HTTP_200_OK)
+
+
 # logout of all devices.
 @api_view(['POST'])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @permission_classes([permissions.IsAuthenticated,]) 
-def LogoutAllView(request):
+def LogoutAllAPIView(request):
     
     tokens = OutstandingToken.objects.filter(user_id=request.user.id)
     for token in tokens:
@@ -275,7 +299,7 @@ def LogoutAllView(request):
 @api_view(['POST'])
 @renderer_classes([JSONRenderer, BrowsableAPIRenderer])
 @permission_classes([permissions.IsAuthenticated,])  
-def LogoutView(request):
+def LogoutAPIView(request):
     try:
         refresh_token = request.data["refresh"]
         token = RefreshToken(refresh_token)
@@ -284,3 +308,41 @@ def LogoutView(request):
         return Response(status=status.HTTP_205_RESET_CONTENT)
     except Exception as e:
         return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+# allow user to login using email and password.
+@api_view(['POST', 'GET'])
+@renderer_classes([JSONRenderer, BrowsableAPIRenderer])
+@permission_classes([permissions.AllowAny,]) 
+def LoginView(request):
+    
+    context = dict()
+    
+    if request.method == "POST":
+        email = request.POST['email']
+        password = request.POST['password']
+        next_ = request.POST["next"]
+        
+        user = authenticate(request, email=email, password=password)
+        if user is not None:
+            login(request, user)
+            return redirect(next_)
+            
+        else:
+            # Return an 'invalid login' error message.
+            context["next"] = next_
+            context["errors"] = ["Email or Password is incorrect please try again."]
+            return render(request,'main/auth/login.html', context)
+        
+    next_ = request.GET.get("next")
+    context["next"] = next_
+    
+    return render(request,'main/auth/login.html', context)
+    
+ 
+# logout using without api.
+def LogoutView(request):
+    logout(request)
+    next_ = request.GET.get("next")
+    return HttpResponseRedirect(next_ if next_ else settings.FRONTEND_URL)
+ 

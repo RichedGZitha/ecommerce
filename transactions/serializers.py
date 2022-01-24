@@ -35,6 +35,6 @@ class ShipmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Shipment
-        fields = ['id','code', 'cost', 'street_name', 'lastname', 'firstname', 'city', 'province', 
+        fields = ['id','code', 'cost', 'street_address', 'lastname', 'firstname', 'city', 'province', 
         'postal_code', 'country', 'email', 'phone', 'is_arrived', 'invoice', 'shipment_date']
         

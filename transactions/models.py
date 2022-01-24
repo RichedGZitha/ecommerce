@@ -25,7 +25,7 @@ class Invoice(models.Model):
 # order model
 class Order(models.Model):
 
-    invoice = models.ForeignKey(to  = Invoice, on_delete=models.SET_NULL, null=True, blank=True)
+    invoice = models.ForeignKey(to = Invoice, on_delete=models.SET_NULL, null=True, blank=True)
     quantity = models.IntegerField(default=0)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     order_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
@@ -46,7 +46,7 @@ class Shipment(models.Model):
     # maximum value: 99 999 999.99 , 2 decimal palces and 8 other degits.
     cost = models.DecimalField(decimal_places=2, max_digits=10, default=0.00)
     
-    street_name =  models.CharField(null=False, blank=False, max_length= 500 , validators=[MaxLengthValidator])
+    street_address =  models.CharField(null=False, blank=False, max_length= 500 , validators=[MaxLengthValidator])
     suburb =  models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
     city =  models.CharField(null=False, blank=False, max_length= 500 , validators=[MaxLengthValidator])
     province = models.CharField(null=False, blank=False, max_length= 500 , validators=[MaxLengthValidator])
@@ -61,4 +61,4 @@ class Shipment(models.Model):
     lastname = models.CharField(max_length=100, validators=[MaxLengthValidator])
 
     def __str__(self) -> str:
-        return "Shipment for " + self.firstname + " at " + self.email + " and Phone number: " + self.phone
+        return "Shipment for " + self.firstname + " at " + self.email + " and Phone number: " + str(self.phone)

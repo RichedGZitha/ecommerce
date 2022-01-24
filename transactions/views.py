@@ -72,7 +72,7 @@ def makeTransaction(request):
         if ordersArray:
             # create invoice
             invoice  = Invoice(user = user)
-
+            
             # get all products using the IN SQL operator.
             products = Product.objects.filter(pk__in = [x["id"] for x in ordersArray])
             # Quantity, unitPrice, product
@@ -99,9 +99,6 @@ def makeTransaction(request):
                         ordersArray[i]["unitPrice"] = float(products[prodIndex].price)
                         ordersArray[i]["product"] = Product.objects.get(pk = int((ordersArray[i])["id"]))
             
-            # create all orders at same time.
-            Order.objects.bulk_create([Order(quantity = int(x["quantity"]), unit_price = float(x["unitPrice"]), order_price = float(x["unitPrice"]) * float(x["quantity"]), product = x["product"]) for x in ordersArray])
-
             # apply a coupon
             if discountcode:
                 try:
@@ -125,6 +122,17 @@ def makeTransaction(request):
             invoice.shipment_cost = shipmentCost
             
             invoice.save()
+            
+            # create all orders at same time.
+            Order.objects.bulk_create([Order(invoice = invoice, quantity = int(x["quantity"]), unit_price = float(x["unitPrice"]), order_price = float(x["unitPrice"]) * float(x["quantity"]), product = x["product"]) for x in ordersArray])
+
+            for i in range(0, len(ordersArray)):
+                for prodIndex in range(0, len(products)):
+                    # update the stock quantity.
+                    if ordersArray[i]["id"] == products[prodIndex].pk:
+                        products[prodIndex].quantity -= ordersArray[i]["quantity"]
+                        products[prodIndex].save()
+                        
                         
             return Response({'success':'Your purchase was successful.', 'invoice': invoice.pk}, status=status.HTTP_200_OK)
     
@@ -157,7 +165,7 @@ def createShipment(request, pk = None):
     if data:
 
         '''
-                        street_name =  models.CharField(null=False, blank=False, max_length= 500 , validators=[MaxLengthValidator])
+                        street_address =  models.CharField(null=False, blank=False, max_length= 500 , validators=[MaxLengthValidator])
                         surburb =  models.CharField(null=True, blank=True, max_length= 500 , validators=[MaxLengthValidator])
                         city =  models.CharField(null=False, blank=False, max_length= 500 , validators=[MaxLengthValidator])
                         province = models.CharField(null=False, blank=False, max_length= 500 , validators=[MaxLengthValidator])
@@ -166,7 +174,7 @@ def createShipment(request, pk = None):
         '''
 
 
-        street_name = data.get('street_name')
+        street_address = data.get('street_address')
         suburb = data.get('suburb')
         city = data.get('city')
         province = data.get('province')
@@ -179,7 +187,7 @@ def createShipment(request, pk = None):
         email = data.get('email')
 
         # if the data is given.
-        isDataGiven = phone and firstname and lastname and email and city and province and postal_code and country and street_name
+        isDataGiven = phone and firstname and lastname and email and city and province and postal_code and country and street_address
 
         if isDataGiven:
 
@@ -194,7 +202,7 @@ def createShipment(request, pk = None):
 
 
                 # create new shipment.
-                shipment = Shipment.objects.create(street_name = street_name, firstname = firstname, lastname = lastname, email = email, invoice = invoice, cost = shipmentCost, city= city, province=province, postal_code=postal_code, country=country, suburb= suburb if suburb else '')
+                shipment = Shipment.objects.create(phone = phone, street_address = street_address, firstname = firstname, lastname = lastname, email = email, invoice = invoice, cost = shipmentCost, city= city, province=province, postal_code=postal_code, country=country, suburb= suburb if suburb else '')
                 
                 # update the invoice.
                 invoice.shipment_cost = shipmentCost

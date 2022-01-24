@@ -1,6 +1,8 @@
 from django.urls import path
 from . import views
 
+app_name = 'transactions'
+
 urlpatterns = [
     path('get-user-invoices/', view=views.getUserInvoices, name='get-user-invoices' ),
     path('get-orders-for-invoice/<slug:pk>/', view=views.getOrdersForInvoice, name='get-user-orders-for-invoice'),

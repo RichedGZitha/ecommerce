@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MaxLengthValidator
+from django.db.models import Avg
 
 from main.models import CloudinaryField, CustomUser
 
@@ -9,7 +10,7 @@ class Category(models.Model):
     manager = models.ForeignKey(to = CustomUser, on_delete=models.SET_NULL, null=True)
 
     def __str__(self) -> str:
-        return self.Name
+        return self.name
 
 
 # product model.
@@ -37,6 +38,15 @@ class Product(models.Model):
 
     def __str__(self) -> str:
         return self.name + "  price: " + str(self.price) + " Quantity: " + str(self.quantity)
+        
+    def in_stock(self)-> bool:
+        
+        return True if self.quantity > 0 else False
+
+    def get_average_stars(self) -> int:
+        
+        avg = (ProductReview.objects.filter(product = self.pk).aggregate(Avg('stars_count')))["stars_count__avg"]
+        return avg if avg else 0.0
 
 
 # product review

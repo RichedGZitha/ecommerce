@@ -111,7 +111,9 @@ SIMPLE_JWT = {
 }
 
 
-FRONTEND_URL = os.environ.get('fontend_url')
+FRONTEND_URL = os.environ.get('ECOM_FRONTEND_URL')
+LOGIN_URL = "/accounts/login/"
+LOGOUT_URL = "/accounts/logout/"
 
 # DJOSER CONFIG
 DJOSER = {

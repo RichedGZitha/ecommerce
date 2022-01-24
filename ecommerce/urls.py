@@ -40,15 +40,15 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    url(r'^auth/v1/', include('djoser.urls')),
-    url(r'^auth/v1/', include('djoser.urls.jwt')),
-    path('', include('main.urls')),
+    path('auth/v1/', include('djoser.urls')),
+    path('auth/v1/', include('djoser.urls.jwt')),
+    path('', include('main.urls', namespace='accounts')),
 
-    path('docs/api/?format=.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
-    path('docs/api/?format=.yaml', schema_view.without_ui(cache_timeout=0), name='schema-yaml'),
-    path('docs/api/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
-    path('products/', include('products.urls')),
-    path('transactions/', include('transactions.urls'))
+    path('api/docs/?format=.json', schema_view.without_ui(cache_timeout=0), name='schema-json'),
+    path('api/docs/?format=.yaml', schema_view.without_ui(cache_timeout=0), name='schema-yaml'),
+    path('api/docs/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('products/', include('products.urls', namespace = 'products')),
+    path('transactions/', include('transactions.urls', namespace='transactions'))
 ]
 
 

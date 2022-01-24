@@ -79,7 +79,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserProfile
-        fields = ['country', 'contact', 'header_image', 'avatar', 'loyalty_points', 'is_seller', 'is_manager', 'user']
+        fields = ['country', 'contact_number', 'header_image', 'avatar', 'loyalty_points', 'is_seller', 'is_manager', 'user']
 
     def get_loyalty_points(self, obj):
         return obj.loyalty_points
